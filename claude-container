@@ -3,28 +3,50 @@
 set -euo pipefail
 trap 'exit 1' INT
 
-if [[ $# -eq 0 ]]
-then
+FIREWALL_FILE=init-firewall.sh
+BUILD=0
+IMAGE_NAME="claude-auth-workspace"
+
+# Parse arguments
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -b|--build)
+      BUILD=1
+      shift
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}"
+
+if [[ $# -eq 0 ]]; then
   echo "Please pass a directory as the first argument"
   exit 1
 fi
 
-FIREWALL_FILE=init-firewall.sh
-BUILD=0
-
 RUN_DIR="$( cd "$(dirname "$( readlink "$0" || ls -1 "$0" )")" > /dev/null && pwd -P )"
-#RUN_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd -P )
 echo "RUN DIR: $RUN_DIR"
 
-WORKING_DIR=$( cd $1 > /dev/null && pwd )
-cd $WORKING_DIR || exit 1
+WORKING_DIR=$( cd "$1" > /dev/null && pwd )
+cd "$WORKING_DIR" || exit 1
 
 # Copy $FIREWALL_FILE while container is built
-mkdir -p $WORKING_DIR/tmp
-cp --update=none $RUN_DIR/$FIREWALL_FILE $WORKING_DIR/tmp/$FIREWALL_FILE || exit 1
+mkdir -p "$WORKING_DIR/tmp"
+cp --update=none "$RUN_DIR/$FIREWALL_FILE" "$WORKING_DIR/tmp/$FIREWALL_FILE" || exit 1
+
+# Auto-build if image doesn't exist
+if [[ $BUILD -eq 0 ]] && ! podman images --format "{{.Repository}}" | grep -q "$IMAGE_NAME"; then
+  echo "Image $IMAGE_NAME not found, building..."
+  BUILD=1
+fi
 
 if [[ $BUILD -eq 1 ]]; then
-  CONTEXT=$WORKING_DIR CLAUDE_CONTAINER_DIR=$RUN_DIR podman compose -f $RUN_DIR/compose.yml --in-pod false run --rm --build claude-auth-workspace
+  CONTEXT="$WORKING_DIR" CLAUDE_CONTAINER_DIR="$RUN_DIR" podman compose -f "$RUN_DIR/compose.yml" --in-pod false run --rm --build claude-auth-workspace
 else
-  CONTEXT=$WORKING_DIR CLAUDE_CONTAINER_DIR=$RUN_DIR podman compose -f $RUN_DIR/compose.yml --in-pod false run --rm claude-auth-workspace
+  CONTEXT="$WORKING_DIR" CLAUDE_CONTAINER_DIR="$RUN_DIR" podman compose -f "$RUN_DIR/compose.yml" --in-pod false run --rm claude-auth-workspace
 fi
