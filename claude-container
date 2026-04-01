@@ -3,7 +3,6 @@
 set -euo pipefail
 trap 'exit 1' INT
 
-FIREWALL_FILE=init-firewall.sh
 BUILD=0
 IMAGE_NAME="localhost/claude-container_claude-auth-workspace"
 
@@ -50,10 +49,6 @@ echo "RUN DIR: $RUN_DIR"
 
 WORKING_DIR=$( cd "$1" > /dev/null && pwd )
 cd "$WORKING_DIR" || exit 1
-
-# Copy $FIREWALL_FILE while container is built
-mkdir -p "$WORKING_DIR/tmp"
-[[ -f "$WORKING_DIR/tmp/$FIREWALL_FILE" ]] || cp "$RUN_DIR/$FIREWALL_FILE" "$WORKING_DIR/tmp/$FIREWALL_FILE" || exit 1
 
 if [[ $BUILD -eq 1 ]]; then
   CONTEXT="$WORKING_DIR" CLAUDE_CONTAINER_DIR="$RUN_DIR" podman compose -f "$RUN_DIR/compose.yml" --in-pod false run --rm --build claude-auth-workspace
