@@ -24,7 +24,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libpng-dev \
   python3 \
   python3-pip \
+  tzdata \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Asia/Tokyo
 
 RUN pip3 install numpy --break-system-packages
 
