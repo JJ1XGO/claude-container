@@ -50,6 +50,13 @@ echo "RUN DIR: $RUN_DIR"
 WORKING_DIR=$( cd "$1" > /dev/null && pwd )
 cd "$WORKING_DIR" || exit 1
 
+# プロジェクトの .env ファイルがあれば読み込む
+if [[ -f "$WORKING_DIR/.env" ]]; then
+  set -a
+  source "$WORKING_DIR/.env"
+  set +a
+fi
+
 if [[ $BUILD -eq 1 ]]; then
   CONTEXT="$WORKING_DIR" CLAUDE_CONTAINER_DIR="$RUN_DIR" podman compose -f "$RUN_DIR/compose.yml" --in-pod false run --rm --build claude-auth-workspace
 else
