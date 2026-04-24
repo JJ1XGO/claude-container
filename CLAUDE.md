@@ -42,6 +42,18 @@ The image name is fixed as `localhost/claude-container_claude-auth-workspace` (C
 
 Edit `Dockerfile.claude` and rebuild with `./claude-container -b /path/to/project`. The `CLAUDE_CODE_VERSION` build arg defaults to `latest`; pin it in `compose.yml` if reproducibility matters.
 
+## Persistence Across Container Runs
+
+コンテナは `--rm` で起動するため終了時に内部の状態は消えるが、以下はホストに bind mount されているため**コンテナを再起動しても保持される**：
+
+| コンテナ内パス | ホスト側 | 内容 |
+|---|---|---|
+| `/home/node/.claude/` | `~/.claude/` | Claude のメモリ・設定・セッション履歴 |
+| `/home/node/.claude.json` | `~/.claude.json` | Claude の認証情報 |
+| `/workspace/` | 起動時に指定したディレクトリ | 作業対象プロジェクト |
+
+bash history（`/commandhistory`）はホストにマウントされていないため、コンテナ終了ごとにリセットされる（既知の未解決事項）。
+
 ## Security Model
 
 Claude runs with `--dangerously-skip-permissions` inside the container, meaning it operates without tool-use confirmation prompts. The container boundary is the only guardrail — Claude has full read/write access to the mounted workspace and `/data`. Do not mount directories containing sensitive data outside the intended project scope.
