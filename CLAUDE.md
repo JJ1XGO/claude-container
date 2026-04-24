@@ -41,3 +41,24 @@ The image name is fixed as `localhost/claude-container_claude-auth-workspace` (C
 ## Modifying the Image
 
 Edit `Dockerfile.claude` and rebuild with `./claude-container -b /path/to/project`. The `CLAUDE_CODE_VERSION` build arg defaults to `latest`; pin it in `compose.yml` if reproducibility matters.
+
+## Security Model
+
+Claude runs with `--dangerously-skip-permissions` inside the container, meaning it operates without tool-use confirmation prompts. The container boundary is the only guardrail — Claude has full read/write access to the mounted workspace and `/data`. Do not mount directories containing sensitive data outside the intended project scope.
+
+## Podman-specific Notes
+
+- `userns_mode: keep-id` maps the host user's UID/GID into the container. This is a Podman feature and has no Docker equivalent — remove it if adapting for Docker.
+- `--in-pod false` prevents Podman Compose from wrapping the service in a Pod (the default Podman Compose behavior). Docker Compose ignores this flag.
+
+## Verifying Changes
+
+There is no test suite. After editing the script or Compose/Dockerfile, verify with:
+
+```bash
+# Syntax check the shell script
+bash -n claude-container
+
+# Validate Compose file
+podman compose -f compose.yml config
+```
