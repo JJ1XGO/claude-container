@@ -34,7 +34,7 @@ Three files work together:
 
 - **`claude-container`** (bash) — entry point. Resolves absolute paths, loads `.env`, then sets `CONTEXT` and `CLAUDE_CONTAINER_DIR` and delegates to `podman compose run`.
 - **`compose.yml`** — defines the single service `claude-auth-workspace`. Mounts the host's `~/.claude.json` and `~/.claude/` (auth + config) plus the target workspace at `/workspace`. Uses `userns_mode: keep-id` so files inside the container have the same UID as the host user.
-- **`Dockerfile.claude`** — builds on `node:24-slim`, installs Claude Code dependencies and project-specific packages, then installs `@anthropic-ai/claude-code` globally. Runs as the non-root `node` user with `CMD ["claude", "--dangerously-skip-permissions"]`.
+- **`Dockerfile.claude`** — builds on `node:24` (not `node:24-slim`), installs Claude Code dependencies and project-specific packages, then installs `@anthropic-ai/claude-code` globally. Runs as the non-root `node` user with `CMD ["claude", "--dangerously-skip-permissions"]`. `node:24-slim` ではなく `node:24` を使う理由: slim は `ca-certificates` を含まないため、apt が HTTPS でパッケージを取得できず大容量パッケージのダウンロードが失敗する環境がある。`node:24` には `ca-certificates`・`gcc`・`git`・`python3` が同梱されており、これらを別途インストールする手間が省ける。最終イメージサイズは slim + 追加パッケージでも大差ないため slim を使うメリットが薄い。
 - **`packages.txt`** — project-specific apt package list. One package per line; lines starting with `#` are treated as comments and ignored.
 - **`requirements.txt`** — project-specific pip package list, passed directly to `pip3 install -r`.
 
