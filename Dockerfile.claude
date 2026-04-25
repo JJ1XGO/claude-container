@@ -1,4 +1,4 @@
-FROM node:24-slim
+FROM node:24
 
 ARG CLAUDE_CODE_VERSION=latest
 ARG TZ=UTC
@@ -6,16 +6,16 @@ ARG TZ=UTC
 # Set timezone before package install so tzdata uses it non-interactively
 ENV TZ=${TZ}
 
-# Install Claude Code dependencies (required for all projects)
-# ca-certificates is included here so HTTPS apt sources work for subsequent steps
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates git gh jq fzf unzip procps tzdata && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # Switch to HTTPS for apt sources (HTTP downloads large packages unreliably in some network environments)
+# ca-certificates is pre-installed in node:24, so HTTPS works immediately
 RUN find /etc/apt -name '*.list' -o -name '*.sources' | \
     xargs sed -i 's|http://deb\.debian\.org|https://deb.debian.org|g'
+
+# Install Claude Code dependencies (required for all projects)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      git gh jq fzf unzip procps tzdata && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install project-specific packages listed in packages.txt
 COPY packages.txt /tmp/packages.txt
