@@ -1,6 +1,7 @@
 #!/bin/bash
 # コンテナイメージのビルド・動作確認スクリプト
 # 結果は .claude/test-results/YYYY-MM-DD_HHMMSS.log に保存される
+# --clean オプションでテスト用イメージと dangling イメージを削除
 
 IMAGE="localhost/claude-test"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -8,6 +9,14 @@ LOG_DIR="${SCRIPT_DIR}/.claude/test-results"
 LOG_FILE="${LOG_DIR}/$(date +%Y-%m-%d_%H%M%S).log"
 PASS=0
 FAIL=0
+
+if [[ "${1:-}" == "--clean" ]]; then
+  echo "Removing test image: ${IMAGE}"
+  podman rmi "${IMAGE}" 2>/dev/null && echo "Done." || echo "Image not found, skipping."
+  echo "Pruning dangling images..."
+  podman image prune -f
+  exit 0
+fi
 
 mkdir -p "$LOG_DIR"
 
