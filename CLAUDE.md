@@ -56,6 +56,8 @@ Edit `Dockerfile.claude` and rebuild with `./claude-container -b /path/to/projec
 
 bash history は `/workspace/.claude/bash_history` に保存される。`/workspace/` はホストに bind mount されているため、**コンテナを再起動しても保持される**。
 
+> **利用者向け注意**: ターゲットプロジェクトのリポジトリで `.claude/bash_history` を誤ってコミットしないよう、`.gitignore` に `.claude/bash_history` を追加することを推奨する。
+
 ## Security Model
 
 Claude runs with `--dangerously-skip-permissions` inside the container, meaning it operates without tool-use confirmation prompts. The container boundary is the only guardrail — Claude has full read/write access to the mounted workspace and `/data`. Do not mount directories containing sensitive data outside the intended project scope.
