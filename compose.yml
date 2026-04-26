@@ -17,4 +17,5 @@ services:
       - ${CLAUDE_CONFIG_DIR:-~}/.claude:/home/node/.claude
       - ${CONTEXT}:/workspace
       - ${EXTRA_MOUNT:-/dev/null}:/data
+      - /etc/localtime:/etc/localtime:ro
     working_dir: /workspace
