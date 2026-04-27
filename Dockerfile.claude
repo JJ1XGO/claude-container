@@ -1,58 +1,61 @@
-FROM node:24
+FROM debian:stable
 
 ARG CLAUDE_CODE_VERSION=latest
 ARG TZ=UTC
 
 # Set timezone before package install so tzdata uses it non-interactively
 ENV TZ=${TZ}
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Switch to HTTPS for apt sources (HTTP downloads large packages unreliably in some network environments)
-# ca-certificates is pre-installed in node:24, so HTTPS works immediately
+# Install ca-certificates first via HTTP (not pre-installed in debian:stable image)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Switch to HTTPS now that ca-certificates is installed
 RUN find /etc/apt -name '*.list' -o -name '*.sources' | \
     xargs sed -i 's|http://deb\.debian\.org|https://deb.debian.org|g'
 
-# Install Claude Code dependencies (required for all projects)
+# Install Claude Code dependencies (curl/jq for native installer; rest is dev convenience)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      git gh jq fzf unzip procps tzdata && \
+      curl git gh jq fzf unzip procps tzdata && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install project-specific packages listed in packages.txt
+# Install project-specific apt packages
 COPY packages.txt /tmp/packages.txt
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       $(grep -v '^\s*#\|^\s*$' /tmp/packages.txt | tr '\n' ' ') && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages listed in requirements.txt
+# Install Python packages
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt --break-system-packages
 
-# Ensure default node user has access to /usr/local/share
-RUN mkdir -p /usr/local/share/npm-global && \
-  chown -R node:node /usr/local/share
-
-# Set DEVCONTAINER environment variable to help with orientation
 ENV DEVCONTAINER=true
 
-# Create workspace and config directories and set permissions
+# Create node user (UID 1000) — debian:stable doesn't have one
+RUN groupadd --gid 1000 node \
+  && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
+
+# Create workspace and config directories
 RUN mkdir -p /workspace /home/node/.claude && \
   chown -R node:node /workspace /home/node/.claude
 
 WORKDIR /workspace
-
-# Set up non-root user
 USER node
 
 # Persist bash history to /workspace/.claude/bash_history
 RUN echo "export PROMPT_COMMAND='mkdir -p /workspace/.claude && history -a'" >> /home/node/.bashrc \
   && echo "export HISTFILE=/workspace/.claude/bash_history" >> /home/node/.bashrc
 
-# Install global npm packages
-ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
-ENV PATH=$PATH:/usr/local/share/npm-global/bin
+# Install Claude Code via official native installer (Recommended method)
+# Installs to ~/.local/bin/claude (symlink) and ~/.local/share/claude (binary)
+# Auto-updater is disabled via settings.json since container is --rm
+RUN curl -fsSL https://claude.ai/install.sh | bash -s ${CLAUDE_CODE_VERSION}
 
-# Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+# Add ~/.local/bin to PATH (where native installer places the symlink)
+ENV PATH=/home/node/.local/bin:$PATH
 
 CMD ["claude", "--dangerously-skip-permissions"]

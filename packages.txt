@@ -1,6 +1,8 @@
 # findsummits build
 make
+gcc
 libpng-dev
 
 # findsummits scripts
+python3
 python3-pip
